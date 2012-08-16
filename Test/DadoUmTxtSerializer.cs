@@ -75,6 +75,31 @@ namespace Test
             Assert.IsTrue(textSerialized.Contains(expected));
         }
 
+        [TestMethod]
+        public void PossoGerarUmBloco()
+        {
+            var bloco = new Bloco0
+            {
+                Reg0001 = { IND_DAD = 0 }, 
+                Reg0007 = { COD_ENT_REF = "NenhumaInscricao" }, 
+                Reg0020 = { IND_DEC = IndicadorCentralizacao.Matriz }, 
+                Reg0990 = { QdeDeLinhas = 1 }
+            };
+
+            var txtSerializer = new TxtSerializer();
+
+            var serialize = txtSerializer.Serialize(bloco);
+
+            string expected =
+@"|0001|0|
+|0007|NenhumaInscricao||
+|0020|Matriz|||||||
+|0990|
+";
+
+            Assert.AreEqual(expected,serialize);
+        }
+
         [TxtRegisterName("I10")]
         class Pessoa
         {

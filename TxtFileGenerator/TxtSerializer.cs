@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Text;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace TxtFileGenerator
 {
@@ -23,24 +25,56 @@ namespace TxtFileGenerator
 
             foreach (var property in properties)
             {
+                if(property.GetCustomAttributes(typeof(TxtIgnoreProperty), false).Any()) 
+                    continue;
+
+                var txtPropertyTypeValue = property.GetCustomAttributes(typeof(TxtPropertyTypeValue), false).Cast<TxtPropertyTypeValue>().SingleOrDefault();
+
                 var propertyType = property.PropertyType;
 
                 var @interface = propertyType.GetInterface("ienumerable", true);
 
+                var value = property.GetValue(obj, null);
+
+                if(value == null)
+                {
+                    values.Add("");
+                    continue;
+                }
+
+                if (txtPropertyTypeValue != null)
+                {
+                    var typeConverter = TypeDescriptor.GetConverter(txtPropertyTypeValue.Type);
+                    values.Add(typeConverter.ConvertToString(value));
+                    continue;
+                }
+
                 if (propertyType.IsPrimitive || typeof(string).IsAssignableFrom(propertyType))
-                    values.Add(property.GetValue(obj, null).ToString());
+                    values.Add(value.ToString());
+                else if (propertyType.IsEnum)
+                {
+                    values.Add(Convert.ToInt32(value).ToString());
+                }
                 else if (@interface != null)
                 {
-                    var enumerable = property.GetValue(obj, null) as IEnumerable<object>;
+                    var enumerable = value as IEnumerable<object>;
                     if (enumerable != null)
                     {
                         foreach (var o in enumerable)
-                            sb.Append(Environment.NewLine + Serialize(o));
+                            sb.Append("\n" + Serialize(o));
                     }
                 }
+                else if(propertyType.IsClass)
+                {
+                    sb.AppendLine(Serialize(value));
+                }
             }
-
-            return string.Format("|{0}|", string.Join("|", values)) + sb;
+            var result = "";
+            if (values.Any()) 
+                result += string.Format("|{0}|", string.Join("|", values));
+            if(sb.Length > 0)
+                result += sb;
+            return Regex.Replace(result, @"^[|]{2,}", "|", RegexOptions.Multiline);
         }
     }
 
@@ -52,6 +86,21 @@ namespace TxtFileGenerator
         public TxtRegisterName(string name)
         {
             Name = name;
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Property)]
+    public class TxtIgnoreProperty : Attribute
+    {}
+
+    [AttributeUsage(AttributeTargets.Property)]
+    public class TxtPropertyTypeValue : Attribute
+    {
+        public Type Type { get; set; }
+
+        public TxtPropertyTypeValue(Type type)
+        {
+            Type = type;
         }
     }
 }
