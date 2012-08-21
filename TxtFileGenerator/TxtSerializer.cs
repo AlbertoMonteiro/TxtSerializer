@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Reflection;
 using System.Text;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace TxtFileGenerator
 {
@@ -12,95 +13,72 @@ namespace TxtFileGenerator
         public string Serialize(object obj)
         {
             var sb = new StringBuilder();
+            var values = new List<string>();
             var type = obj.GetType();
 
-            var txtRegisterName = type.GetCustomAttributes(typeof(TxtRegisterName), false).Cast<TxtRegisterName>().SingleOrDefault();
-
-            var properties = type.GetProperties();
-
-            var values = new List<string>();
+            var txtRegisterName = type.GetAttribute<TxtRegisterName>();
 
             if (txtRegisterName != null)
                 values.Add(txtRegisterName.Name);
 
+            var properties = type.GetProperties();
+
             foreach (var property in properties)
             {
-                if(property.GetCustomAttributes(typeof(TxtIgnoreProperty), false).Any()) 
+                if (MustIgnore(property))
                     continue;
 
-                var txtPropertyTypeValue = property.GetCustomAttributes(typeof(TxtPropertyTypeValue), false).Cast<TxtPropertyTypeValue>().SingleOrDefault();
+                var propertyTypeValue = property.GetAttribute<TxtPropertyTypeValue>();
 
                 var propertyType = property.PropertyType;
 
-                var @interface = propertyType.GetInterface("ienumerable", true);
-
                 var value = property.GetValue(obj, null);
 
-                if(value == null)
+                if (value == null)
                 {
-                    values.Add("");
+                    values.Add(string.Empty);
                     continue;
                 }
 
-                if (txtPropertyTypeValue != null)
+                if (propertyTypeValue != null)
                 {
-                    var typeConverter = TypeDescriptor.GetConverter(txtPropertyTypeValue.Type);
+                    var typeConverter = TypeDescriptor.GetConverter(propertyTypeValue.Type);
                     values.Add(typeConverter.ConvertToString(value));
                     continue;
                 }
 
-                if (propertyType.IsPrimitive || typeof(string).IsAssignableFrom(propertyType))
+                if (IsPrimitiveOrString(propertyType))
                     values.Add(value.ToString());
                 else if (propertyType.IsEnum)
-                {
                     values.Add(Convert.ToInt32(value).ToString());
-                }
-                else if (@interface != null)
-                {
-                    var enumerable = value as IEnumerable<object>;
-                    if (enumerable != null)
-                    {
-                        foreach (var o in enumerable)
-                            sb.Append("\n" + Serialize(o));
-                    }
-                }
-                else if(propertyType.IsClass)
-                {
+                else if (propertyType.IsEnumerable()) 
+                    foreach(var item in (IEnumerable)value) 
+                        sb.AppendLine(Serialize(item));
+                else if(propertyType.IsClass) 
                     sb.AppendLine(Serialize(value));
-                }
             }
-            var result = "";
-            if (values.Any()) 
+
+            var result = string.Empty;
+            
+            if (values.Any())
                 result += string.Format("|{0}|", string.Join("|", values));
-            if(sb.Length > 0)
+            
+            if (sb.Length > 0 && result.Length > 0)
+                result += Environment.NewLine + sb;
+            else
                 result += sb;
-            return Regex.Replace(result, @"^[|]{2,}", "|", RegexOptions.Multiline);
+            
+            return result;
         }
-    }
 
-    [AttributeUsage(AttributeTargets.Class)]
-    public class TxtRegisterName : Attribute
-    {
-        public string Name { get; set; }
-
-        public TxtRegisterName(string name)
+        private static bool IsPrimitiveOrString(Type propertyType)
         {
-            Name = name;
+            return propertyType.IsPrimitive || typeof(string).IsAssignableFrom(propertyType);
         }
-    }
 
-    [AttributeUsage(AttributeTargets.Property)]
-    public class TxtIgnoreProperty : Attribute
-    {}
-
-    [AttributeUsage(AttributeTargets.Property)]
-    public class TxtPropertyTypeValue : Attribute
-    {
-        public Type Type { get; set; }
-
-        public TxtPropertyTypeValue(Type type)
+        private static bool MustIgnore(PropertyInfo property)
         {
-            Type = type;
+            return property.GetCustomAttributes(typeof(TxtIgnoreProperty), false).Any();
         }
     }
 }

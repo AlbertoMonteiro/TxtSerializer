@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TxtFileGenerator;
 
@@ -7,6 +8,8 @@ namespace Test
     [TestClass]
     public class DadoUmTxtSerializer
     {
+        private string line = Environment.NewLine;
+
         [TestMethod]
         public void SerializaçãoDeObjetosDeveSerSeparadoPorPipe()
         {
@@ -42,12 +45,11 @@ namespace Test
 
             var textSerialized = txtSerializer.Serialize(pessoa);
 
-            const string expected = 
-@"|1|Alberto|22|
-|1|10,9|
-|2|11,9|";
+            string expected = "|1|Alberto|22|" + line + 
+                              "|1|10,9|" + line + 
+                              "|2|11,9|" + line;
 
-            Assert.IsTrue(textSerialized.Contains(expected));
+            Assert.AreEqual(expected, textSerialized);
         }
 
         [TestMethod]
@@ -65,11 +67,8 @@ namespace Test
                     new Pessoa2 {Id = 3, Nome = "Alberto2"},
                 }
             };
-            
-            const string expected =
-@"|I10|1|Alberto|
-|I20|2|Alberto1|
-|I20|3|Alberto2|";
+
+            var expected = "|I10|1|Alberto|" + line + "|I20|2|Alberto1|" + line + "|I20|3|Alberto2|" + line;
 
             var textSerialized = txtSerializer.Serialize(pessoa);
             Assert.IsTrue(textSerialized.Contains(expected));
@@ -96,7 +95,6 @@ namespace Test
 |0020|Matriz|||||||
 |0990|
 ";
-
             Assert.AreEqual(expected,serialize);
         }
 

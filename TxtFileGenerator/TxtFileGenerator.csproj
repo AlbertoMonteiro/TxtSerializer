@@ -41,6 +41,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ITxtSerializer.cs" />
+    <Compile Include="TxtIgnoreProperty.cs" />
+    <Compile Include="TxtPropertyTypeValue.cs" />
+    <Compile Include="TxtRegisterName.cs" />
     <Compile Include="TxtSerializer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

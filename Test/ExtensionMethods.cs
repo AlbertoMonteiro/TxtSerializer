@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Globalization;
+using System.Linq;
+using System.Reflection;
+using TxtFileGenerator;
 
 namespace Test
 {
@@ -42,6 +45,11 @@ namespace Test
         public static string FimDaLinha(this string value)
         {
             return value + "\r\n";
+        }
+
+        public static T GetAttribute<T>(this PropertyInfo property)
+        {
+            return property.GetCustomAttributes(typeof(T), false).Cast<T>().SingleOrDefault();
         }
     }
 }
